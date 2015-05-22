@@ -323,27 +323,13 @@ decode_linkid (char_iterator s, char_iterator const eos)
 static char_iterator
 scan_tab (char_iterator const pos, char_iterator const eos)
 {
-    char_iterator p = pos;
-    if (p < eos && '\t' == *p)
-        return p + 1;
-    else if (p < eos && ' ' == *p) {
-        ++p;
-        if (p < eos && '\t' == *p)
-            return p + 1;
-        else if (p < eos && ' ' == *p) {
-            ++p;
-            if (p < eos && '\t' == *p)
-                return p + 1;
-            else if (p < eos && ' ' == *p) {
-                ++p;
-                if (p < eos && ('\t' == *p || ' ' == *p))
-                    return p + 1;
-            }
-        }
-    }
-    return pos;
+    char_iterator p1 = scan_of (pos, eos, 0, 3, ' ');
+    char_iterator p2 = scan_of (p1, eos, 1, 1, ' ');
+    char_iterator p3 = scan_of (p1, eos, 1, 1, '\t');
+    return p2 - pos == 4 ? p2 : p1 < p3 ? p3 : pos;
 }
 
+/* not tab */
 static char_iterator
 scan_tab_not (char_iterator const pos, char_iterator const eos)
 {
@@ -1586,15 +1572,17 @@ print_block (std::deque<token_type> const& input,
             ++dot;
         }
         else if (CODE == dot->kind) {
-            print_with_escape_htmlall (dot->cbegin, dot->cend, output);
-            ++dot;
+            for (; CODE == dot->kind; ++dot) {
+                if (dot + 1 != dol && CODE == dot[1].kind)
+                    print_with_escape_htmlall (dot->cbegin, dot->cend, output);
+                else if (dot->cbegin < dot->cend - 1)
+                    print_with_escape_htmlall (dot->cbegin, dot->cend - 1, output);
+            }
         }
         else if (INLINE == dot->kind) {
             std::wstring src;
-            while (INLINE == dot->kind) {
+            for (; INLINE == dot->kind; ++dot)
                 src.append (dot->cbegin, dot->cend);
-                ++dot;
-            }
             if (src.size () > 0 && '\n' == src.back ())
                 src.pop_back ();
             std::deque<token_type> inline_input;
