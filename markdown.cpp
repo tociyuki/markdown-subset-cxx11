@@ -1187,26 +1187,32 @@ parse_link_paren (
     char_iterator p1 = scan_of (pos, eos, 1, 1, '(');
     if (pos == p1)
         return pos;
-    char_iterator p2 = p1;
+    char_iterator p2 = scan_quoted (p1, eos, '<', '>', -1, ismdprint);
+    if (p1 < p2) {
+        attribute.push_back ({URI, p1 + 1, p2 - 1});
+        char_iterator p3 = parse_link_title (p2, eos, attribute);
+        return p2 == p3 ? pos : p3;
+    }
+    char_iterator p3 = p1;
     int level = 1;
     while (level > 0) {
-        if (p2 >= eos)
+        if (p3 >= eos)
             return pos;
-        if (ismdwhite (*p2)) {
-            attribute.push_back ({URI, p1, p2});
-            char_iterator p3 = parse_link_title (p2, eos, attribute);
-            return p2 == p3 ? pos : p3;
+        if (ismdwhite (*p3)) {
+            attribute.push_back ({URI, p1, p3});
+            char_iterator p4 = parse_link_title (p3, eos, attribute);
+            return p3 == p4 ? pos : p4;
         }
-        if (! ismdgraph (*p2))
+        if (! ismdgraph (*p3))
             return pos;
-        if (')' == *p2)
+        if (')' == *p3)
             --level;
-        if ('(' == *p2)
+        if ('(' == *p3)
             ++level;
-        ++p2;
+        ++p3;
     }
-    attribute.push_back ({URI, p1, p2 - 1});
-    return p2;
+    attribute.push_back ({URI, p1, p3 - 1});
+    return p3;
 }
 
 static char_iterator
@@ -1436,6 +1442,7 @@ print_with_escape_html (char_iterator s, char_iterator const e,
         case '<': output << L"&lt;"; break;
         case '>': output << L"&gt;"; break;
         case '"': output << L"&quot;"; break;
+        case '\'': output << L"&#39;"; break;
         }
 }
 
@@ -1450,6 +1457,7 @@ print_with_escape_htmlall (char_iterator s, char_iterator const e,
         case '<': output << L"&lt;"; break;
         case '>': output << L"&gt;"; break;
         case '"': output << L"&quot;"; break;
+        case '\'': output << L"&#39;"; break;
         }
 }
 
@@ -1558,7 +1566,11 @@ print_block (std::deque<token_type> const& input,
     line_iterator dol = input.cend ();
     while (dot < dol) {
         line_iterator olddot = dot;
-        if (HRULE <= dot->kind) {
+        if (BLANK == dot->kind) {
+            output << L"\n";
+            ++dot;
+        }
+        else if (HRULE <= dot->kind) {
             if (SOLIST == dot->kind || SULIST == dot->kind) {
                 if (dot - 1 != input.cbegin () && dot[-1].kind == INLINE)
                     output << L"\n";
