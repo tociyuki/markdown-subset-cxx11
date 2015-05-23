@@ -1244,7 +1244,10 @@ parse_link (
     char_iterator p5 = parse_link_bracket (p3, eos, p1, p2, attribute);
     if (parse_fetch_reference_link (dict, attribute))
         return parse_make_link (pos, p5, nestlevel, inner, attribute, output);
-    return parse_text (pos, p5, output);
+    parse_text (pos, p1, output);   // '['
+    parse_inline_loop (bos, p1, eos, nestlevel, output, dict, emstack);
+    parse_text (p2, p3, output);    // ']'
+    return p3;
 }
 
 static char_iterator
