@@ -1493,33 +1493,45 @@ print_with_escape_uri (char_iterator s, char_iterator const e,
 }
 
 static token_iterator
-print_innerlink (token_iterator p, std::wostream& output)
+print_innerlink (token_iterator p, std::wostream& output, refdict_type const& dict)
 {
-    print_with_escape_uri (p->cbegin, p->cend, output);
+    static const std::wstring stremtpy (L"");
+    int skind = p->kind;    // SABEGIN || IMGBEGIN
+    output << kindname[skind];
     ++p;
-    if (TITLE == p->kind) {
-        output << kindname[p->kind];
+    char_iterator titleb = stremtpy.cbegin ();
+    char_iterator titlee = stremtpy.cend ();
+    if (LINKID == p->kind) {
+        std::wstring linkid = decode_linkid (p->cbegin, p->cend);
+        auto i = dict.find (linkid);
+        if (i != dict.end ()) {
+            print_with_escape_uri (
+                i->second.uri.cbegin (), i->second.uri.cend (), output);
+            titleb = i->second.title.cbegin ();
+            titlee = i->second.title.cend ();
+        }
+        ++p;
+    }
+    else if (URI == p->kind) {
+        print_with_escape_uri (p->cbegin, p->cend, output);
+        ++p;
+        if (TITLE == p->kind) {
+            titleb = p->cbegin;
+            titlee = p->cend;
+            ++p;
+        }
+    }
+    if (IMGBEGIN == skind) {
+        output << kindname[p->kind];    // ALT
         print_with_escape_html (p->cbegin, p->cend, output);
         ++p;
     }
-    return p;
-}
-
-static token_iterator
-print_reflink (token_iterator p, std::wostream& output, refdict_type const& dict)
-{
-    std::wstring linkid = decode_linkid (p->cbegin, p->cend);
-    auto i = dict.find (linkid);
-    if (i != dict.end ()) {
-        std::wstring const& u = i->second.uri;
-        std::wstring const& t = i->second.title;
-        print_with_escape_uri (u.cbegin (), u.cend (), output);
-        if (! t.empty ()) {
-            output << kindname[TITLE];
-            print_with_escape_html (t.cbegin (), t.cend (), output);
-        }
+    if (titleb < titlee) {
+        output << kindname[TITLE];
+        print_with_escape_html (titleb, titlee, output);
     }
-    return ++p;
+    output << kindname[p->kind];
+    return p;
 }
 
 static void
@@ -1536,21 +1548,8 @@ print_inline (std::deque<token_type>const & input, std::wostream& output,
         else if (HTML == p->kind)
             for (char_iterator i = p->cbegin; i < p->cend; ++i)
                 output << *i;
-        else if (SABEGIN == p->kind || IMGBEGIN == p->kind) {
-            int img = IMGBEGIN == p->kind;
-            output << kindname[p->kind];
-            ++p;
-            if (LINKID == p->kind)
-                p = print_reflink (p, output, dict);
-            else if (URI == p->kind)
-                p = print_innerlink (p, output);
-            if (img) {
-                output << kindname[p->kind];
-                print_with_escape_html (p->cbegin, p->cend, output);
-                ++p;
-            }
-            output << kindname[p->kind];
-        }
+        else if (SABEGIN == p->kind || IMGBEGIN == p->kind)
+            p = print_innerlink (p, output, dict);
     }
 }
 
