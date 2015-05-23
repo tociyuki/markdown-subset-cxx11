@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for i in *.md; do
+  echo $i
+  ../../mkdown < $i > ${i%.*}.out
+done

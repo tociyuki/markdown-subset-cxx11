@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for i in *.xhtml; do
+  diff -u $i ${i%.*}.out
+done
