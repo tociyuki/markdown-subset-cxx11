@@ -1567,8 +1567,10 @@ print_block (std::deque<token_type> const& input,
     while (dot < dol) {
         line_iterator olddot = dot;
         if (BLANK == dot->kind) {
-            output << L"\n";
-            ++dot;
+            for (; dot < dol && BLANK == dot->kind; ++dot)
+                ;
+            if (dot < dol)
+                output << L"\n";
         }
         else if (HRULE <= dot->kind) {
             if (SOLIST == dot->kind || SULIST == dot->kind) {
