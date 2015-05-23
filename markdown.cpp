@@ -1585,10 +1585,11 @@ print_block (std::deque<token_type> const& input,
         }
         else if (CODE == dot->kind) {
             for (; CODE == dot->kind; ++dot) {
-                if (dot + 1 != dol && CODE == dot[1].kind)
-                    print_with_escape_htmlall (dot->cbegin, dot->cend, output);
-                else if (dot->cbegin < dot->cend - 1)
+                if (dot + 1 != dol && CODE != dot[1].kind
+                        && dot->cbegin < dot->cend - 1 && '\n' == dot->cend[-1])
                     print_with_escape_htmlall (dot->cbegin, dot->cend - 1, output);
+                else
+                    print_with_escape_htmlall (dot->cbegin, dot->cend, output);
             }
         }
         else if (INLINE == dot->kind) {
