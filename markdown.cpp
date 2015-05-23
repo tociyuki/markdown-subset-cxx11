@@ -155,7 +155,7 @@ void markdown (std::wstring const& input, std::wostream& output)
 static bool
 ismdescapable (int c)
 {
-    static std::wstring esc (L"\\`*_{}[]()#+-.!");
+    static std::wstring esc (L"\\`*_{}[]()<>#+-.!");
     return esc.find (c) != std::wstring::npos;
 }
 
