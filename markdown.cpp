@@ -1158,33 +1158,7 @@ parse_link_bracket (
         attribute.push_back ({LINKID, p1 + 1, p2 - 1});
     else
         attribute.push_back ({LINKID, altbegin, altend});
-#if 0
-    if (p1 == p2)
-        return pos;
-    if (p2 - p1 == 2)
-        attribute.push_back ({LINKID, altbegin, altend});
-    else
-        attribute.push_back ({LINKID, p1 + 1, p2 - 1});
-#endif
     return p2;
-}
-
-static char_iterator
-parse_link_title (
-    char_iterator const pos,
-    char_iterator const eos,
-    std::deque<token_type>& attribute)
-{
-    char_iterator p1 = scan_of (pos, eos, 1, -1, ismdwhite);
-    if (p1 < eos && ('"' == *p1 || '\'' == *p1)) {
-        char_iterator p2 = scan_quoted (p1, eos, *p1, *p1, -1, ismdany);
-        if (p1 == p2)
-            return pos;
-        attribute.push_back ({TITLE, p1 + 1, p2 - 1});
-        p1 = scan_of (p2, eos, 1, -1, ismdwhite);
-    }
-    char_iterator p3 = scan_of (p1, eos, 1, 1, ')');
-    return p1 == p3 ? pos : p3;
 }
 
 static char_iterator
@@ -1193,35 +1167,21 @@ parse_link_paren (
     char_iterator const eos,
     std::deque<token_type>& attribute)
 {
-    char_iterator p1 = scan_of (pos, eos, 1, 1, '(');
-    if (pos == p1)
+    char_iterator p9 = scan_quoted (pos, eos, '(', ')', -1, ismdany);
+    if (pos == p9)
         return pos;
-    char_iterator p2 = scan_quoted (p1, eos, '<', '>', -1, ismdprint);
-    if (p1 < p2) {
+    char_iterator p1 = pos + 1;
+    char_iterator p8 = p9 - 1;
+    char_iterator p2 = scan_of (p1, p8, 1, -1, ismdgraph);
+    char_iterator p7 = rscan_of (p2, p8, ismdwhite);
+    if (p2 - p1 > 1 && '<' == p1[0] && '>' == p2[-1])
         attribute.push_back ({URI, p1 + 1, p2 - 1});
-        char_iterator p3 = parse_link_title (p2, eos, attribute);
-        return p2 == p3 ? pos : p3;
-    }
-    char_iterator p3 = p1;
-    int level = 1;
-    while (level > 0) {
-        if (p3 >= eos)
-            return pos;
-        if (ismdwhite (*p3)) {
-            attribute.push_back ({URI, p1, p3});
-            char_iterator p4 = parse_link_title (p3, eos, attribute);
-            return p3 == p4 ? pos : p4;
-        }
-        if (! ismdgraph (*p3))
-            return pos;
-        if (')' == *p3)
-            --level;
-        if ('(' == *p3)
-            ++level;
-        ++p3;
-    }
-    attribute.push_back ({URI, p1, p3 - 1});
-    return p3;
+    else
+        attribute.push_back ({URI, p1, p2});
+    char_iterator p3 = scan_of (p2, p7, 1, -1, ismdwhite);
+    if (p2 < p3 && ('"' == *p3 || '\'' == *p3) && *p3 == p7[-1])
+        attribute.push_back ({TITLE, p3 + 1, p7 - 1});
+    return p9;
 }
 
 static char_iterator
