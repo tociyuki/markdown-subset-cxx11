@@ -1152,12 +1152,18 @@ parse_link_bracket (
 {
     char_iterator p1 = scan_of (pos, eos, 0, -1, ismdwhite);
     char_iterator p2 = scan_quoted (p1, eos, '[', ']', -1, ismdany);
+    if (p2 - p1 > 2)
+        attribute.push_back ({LINKID, p1 + 1, p2 - 1});
+    else
+        attribute.push_back ({LINKID, altbegin, altend});
+#if 0
     if (p1 == p2)
         return pos;
     if (p2 - p1 == 2)
         attribute.push_back ({LINKID, altbegin, altend});
     else
         attribute.push_back ({LINKID, p1 + 1, p2 - 1});
+#endif
     return p2;
 }
 
@@ -1270,17 +1276,13 @@ parse_link (
     char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
     if (p1 == p2 || p2 == p3)
         return parse_text (pos, p1, output);
-    char_iterator p4 = parse_link_bracket (p3, eos, p1, p2, attribute);
-    if (p3 < p4) {
-        if (parse_fetch_reference_link (dict, attribute))
-            return parse_make_link (pos, p4, nestlevel, inner, attribute, output);
-        else
-            return parse_text (pos, p4, output);
-    }
-    char_iterator p5 = parse_link_paren (p3, eos, attribute);
-    if (p3 < p5)
+    char_iterator p4 = parse_link_paren (p3, eos, attribute);
+    if (p3 < p4)
+        return parse_make_link (pos, p4, nestlevel, inner, attribute, output);
+    char_iterator p5 = parse_link_bracket (p3, eos, p1, p2, attribute);
+    if (parse_fetch_reference_link (dict, attribute))
         return parse_make_link (pos, p5, nestlevel, inner, attribute, output);
-    return parse_text (pos, p3, output);
+    return parse_text (pos, p5, output);
 }
 
 static char_iterator
@@ -1313,17 +1315,13 @@ parse_image (
     if (p1 == p3)
         return parse_text (pos, p2, output);
     inner.push_back ({ALT, p2, p3 - 1});
-    char_iterator p4 = parse_link_bracket (p3, eos, p2, p3 - 1, attribute);
-    if (p3 < p4) {
-        if (parse_fetch_reference_link (dict, attribute))
-            return parse_make_image (p4, inner, attribute, output);
-        else
-            return parse_text (pos, p4, output);
-    }
-    char_iterator p5 = parse_link_paren (p3, eos, attribute);
-    if (p3 < p5)
+    char_iterator p4 = parse_link_paren (p3, eos, attribute);
+    if (p3 < p4)
+        return parse_make_image (p4, inner, attribute, output);
+    char_iterator p5 = parse_link_bracket (p3, eos, p2, p3 - 1, attribute);
+    if (parse_fetch_reference_link (dict, attribute))
         return parse_make_image (p5, inner, attribute, output);
-    return parse_text (pos, p3, output);
+    return parse_text (pos, p5, output);
 }
 
 static char_iterator
