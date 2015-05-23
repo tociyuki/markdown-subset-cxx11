@@ -90,11 +90,11 @@ static wchar_t const *kindname[]{
     L"LINKID", L"URI",
     /* inline HTML markup */
     L"<a href=\"", L"\" title=\"", L"\">",
-    L"<img src=\"", L"\" alt=\"", L"\"/>",
-    L"<br/>\n", L"<code>", L"</code>", L"</a>",
+    L"<img src=\"", L"\" alt=\"", L"\" />",
+    L"<br />\n", L"<code>", L"</code>", L"</a>",
     L"<em>", L"</em>", L"<strong>", L"</strong>",
     /* block HTML markup */
-    L"<hr/>\n",
+    L"<hr />\n",
     L"<pre><code>", L"</code></pre>\n",
     L"<h1>", L"</h1>\n",
     L"<h2>", L"</h2>\n",
