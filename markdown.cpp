@@ -908,16 +908,18 @@ scan_refdef_title (char_iterator const pos, char_iterator const eos,
     char_iterator p2 = scan_of (p1, eos, 1, 1, '\n');
     if (p1 < p2)
         p2 = scan_of (p2, eos, 0, -1, ismdspace);
-    char_iterator p3 = p2;
     if (pos < p2 && p2 < eos) {
-        if ('"' == *p2 || '\'' == *p2 || '`' == *p2)
-            p3 = scan_quoted (p2, eos, *p2, *p2, -1, ismdprint);
-        else if ('(' == *p2)
-            p3 = scan_quoted (p2, eos, '(', ')', -1, ismdprint);
+        if ('"' == *p2 || '\'' == *p2 || '`' == *p2 || '(' == *p2) {
+            int qq = '(' == *p2 ? ')' : *p2;
+            char_iterator p4 = scan_of (p2, eos, 0, -1, ismdprint);
+            char_iterator p3 = rscan_of (p2, p4, ismdspace);
+            if (p3 - p2 > 2 && qq == p3[-1]) {
+                title.assign (p2 + 1, p3 - 1);
+                return p4;
+            }
+        }
     }
-    if (p3 - p2 > 2)
-        title.assign (p2 + 1, p3 - 1);
-    return p2 < p3 ? p3 : pos;
+    return pos;
 }
 
 static char_iterator
@@ -1585,7 +1587,7 @@ print_block (std::deque<token_type> const& input,
         }
         else if (HRULE <= dot->kind) {
             if (SOLIST == dot->kind || SULIST == dot->kind) {
-                if (dot - 1 != input.cbegin () && dot[-1].kind == INLINE)
+                if (dot - 1 > input.cbegin () && dot[-1].kind == INLINE)
                     output << L"\n";
             }
             output << kindname[dot->kind];
@@ -1597,8 +1599,8 @@ print_block (std::deque<token_type> const& input,
             ++dot;
         }
         else if (CODE == dot->kind) {
-            for (; CODE == dot->kind; ++dot) {
-                if (dot + 1 != dol && CODE != dot[1].kind
+            for (; dot < dol && CODE == dot->kind; ++dot) {
+                if (dot + 1 < dol && CODE != dot[1].kind
                         && dot->cbegin < dot->cend - 1 && '\n' == dot->cend[-1])
                     print_with_escape_htmlall (dot->cbegin, dot->cend - 1, output);
                 else
@@ -1607,7 +1609,7 @@ print_block (std::deque<token_type> const& input,
         }
         else if (INLINE == dot->kind) {
             std::wstring src;
-            for (; INLINE == dot->kind; ++dot)
+            for (; dot < dol && INLINE == dot->kind; ++dot)
                 src.append (dot->cbegin, dot->cend);
             if (src.size () > 0 && '\n' == src.back ())
                 src.pop_back ();
