@@ -955,14 +955,11 @@ split_lines (std::wstring const &input, std::deque<token_type>& output,
     char_iterator p4 = input.cbegin ();
     while (p4 < input.cend ()) {
         char_iterator p1 = p4;
-        p4 = parse_blockcode (input.cbegin (), p1, input.cend (), output);
-        if (p1 < p4)
+        if ((p4 = parse_blockcode (input.cbegin (), p1, input.cend (), output)) > p1)
             continue;
-        p4 = parse_blockhtml (input.cbegin (), p1, input.cend (), output);
-        if (p1 < p4)
+        if ((p4 = parse_blockhtml (input.cbegin (), p1, input.cend (), output)) > p1)
             continue;
-        p4 = parse_refdef (p1, input.cend (), dict);
-        if (p1 < p4)
+        if ((p4 = parse_refdef (p1, input.cend (), dict)) > p1)
             continue;
         char_iterator p2 = scan_of (p1, input.cend (), 0, -1, ismdspace);
         char_iterator p3 = scan_of (p2, input.cend (), 0, -1, ismdprint);
