@@ -934,7 +934,7 @@ parse_refdef (char_iterator const pos, char_iterator const eos,
     char_iterator p3 = scan_refdef_title (p2, eos, entry.title);
     char_iterator p4 = scan_of (p3, eos, 0, -1, ismdspace);
     char_iterator p5 = scan_of (p4, eos, 1, 1, '\n');
-    if (p4 == p5)
+    if (p5 < eos && p4 == p5)
         return pos;
     dict[entry.id] = entry;
     return p5;
