@@ -160,6 +160,12 @@ ismdescapable (int c)
 }
 
 static bool
+ismdemphasis (int c)
+{
+    return '*' == c || '_' == c;
+}
+
+static bool
 ismdwhite (int c)
 {
     return '\n' == c || '\t' == c || ' ' == c;
@@ -1104,7 +1110,7 @@ parse_emphasis (char_iterator const bos, char_iterator const pos,
     char_iterator const eos, int const nestlevel,
     std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
 {
-    char_iterator p1 = scan_of (pos, eos, 1, -1, '*');
+    char_iterator p1 = scan_of (pos, eos, 1, -1, ismdemphasis);
     int n = p1 - pos;
     bool leftwhite = pos == bos || ismdwhite (pos[-1]);
     bool rightwhite = p1 == eos || ismdwhite (p1[0]);
