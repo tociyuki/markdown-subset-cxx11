@@ -971,7 +971,8 @@ split_lines (std::wstring const &input, std::deque<token_type>& output,
 static char_iterator
 parse_inline_loop (char_iterator const bos, char_iterator const pos,
     char_iterator const eos, int const nestlevel,
-    std::deque<token_type>& output, std::deque<emphasis_patch>& emstack);
+    std::deque<token_type>& output, refdict_type const& dict,
+    std::deque<emphasis_patch>& emstack);
 
 static char_iterator
 parse_text (char_iterator const tbegin, char_iterator const tend,
@@ -1234,13 +1235,29 @@ parse_make_link (
     return cend;
 }
 
+static bool
+parse_fetch_reference_link (
+    refdict_type const& dict, std::deque<token_type>& attribute)
+{
+    std::wstring linkid = decode_linkid (attribute[0].cbegin, attribute[0].cend);
+    auto i = dict.find (linkid);
+    if (i == dict.end ())
+        return false;
+    reflink_type const& rf = i->second;
+    attribute.clear ();
+    attribute.push_back ({URI, rf.uri.cbegin (), rf.uri.cend ()});
+    if (! rf.title.empty ())
+        attribute.push_back ({TITLE, rf.title.cbegin (), rf.title.cend ()});
+    return true;
+}
+
 static char_iterator
 parse_link (
     char_iterator const bos,
     char_iterator const pos,
     char_iterator const eos,
     int const nestlevel,
-    std::deque<token_type>& output,
+    std::deque<token_type>& output, refdict_type const& dict,
     std::deque<emphasis_patch>& emstack)
 {
     std::deque<token_type> inner;
@@ -1249,13 +1266,17 @@ parse_link (
     if (pos == p1)
         return pos;
     char_iterator p2
-        = parse_inline_loop (bos, p1, eos, nestlevel + 1, inner, emstack);
+        = parse_inline_loop (bos, p1, eos, nestlevel + 1, inner, dict, emstack);
     char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
     if (p1 == p2 || p2 == p3)
         return parse_text (pos, p1, output);
     char_iterator p4 = parse_link_bracket (p3, eos, p1, p2, attribute);
-    if (p3 < p4)
-        return parse_make_link (pos, p4, nestlevel, inner, attribute, output);
+    if (p3 < p4) {
+        if (parse_fetch_reference_link (dict, attribute))
+            return parse_make_link (pos, p4, nestlevel, inner, attribute, output);
+        else
+            return parse_text (pos, p4, output);
+    }
     char_iterator p5 = parse_link_paren (p3, eos, attribute);
     if (p3 < p5)
         return parse_make_link (pos, p5, nestlevel, inner, attribute, output);
@@ -1280,7 +1301,7 @@ static char_iterator
 parse_image (
     char_iterator const pos,
     char_iterator const eos,
-    std::deque<token_type>& output)
+    std::deque<token_type>& output, refdict_type const& dict)
 {
     std::deque<token_type> inner;
     std::deque<token_type> attribute;
@@ -1293,8 +1314,12 @@ parse_image (
         return parse_text (pos, p2, output);
     inner.push_back ({ALT, p2, p3 - 1});
     char_iterator p4 = parse_link_bracket (p3, eos, p2, p3 - 1, attribute);
-    if (p3 < p4)
-        return parse_make_image (p4, inner, attribute, output);
+    if (p3 < p4) {
+        if (parse_fetch_reference_link (dict, attribute))
+            return parse_make_image (p4, inner, attribute, output);
+        else
+            return parse_text (pos, p4, output);
+    }
     char_iterator p5 = parse_link_paren (p3, eos, attribute);
     if (p3 < p5)
         return parse_make_image (p5, inner, attribute, output);
@@ -1308,6 +1333,7 @@ parse_inline_loop (
     char_iterator const eos,
     int const nestlevel,
     std::deque<token_type>& output,
+    refdict_type const& dict,
     std::deque<emphasis_patch>& emstack)
 {
     char_iterator p1 = pos;
@@ -1323,9 +1349,9 @@ parse_inline_loop (
         else if ('<' == *p1)
             p1 = parse_angle (p1, eos, output);
         else if ('[' == *p1)
-            p1 = parse_link (bos, p1, eos, nestlevel, output, emstack);
+            p1 = parse_link (bos, p1, eos, nestlevel, output, dict, emstack);
         else if ('!' == *p1)
-            p1 = parse_image (p1, eos, output);
+            p1 = parse_image (p1, eos, output, dict);
         else {
             static std::wstring ccls (L" \\`*<![]");
             char_iterator p2
@@ -1337,9 +1363,8 @@ parse_inline_loop (
 }
 
 static void
-parse_inline (
-    std::wstring const& input,
-    std::deque<token_type>& output)
+parse_inline (std::wstring const& input, std::deque<token_type>& output,
+    refdict_type const& dict)
 {
     std::deque<emphasis_patch> emstack;
     char_iterator const bos = input.cbegin ();
@@ -1347,7 +1372,7 @@ parse_inline (
     char_iterator pos = bos;
     while (pos < eos) {
         char_iterator pos0 = pos;
-        pos = parse_inline_loop (bos, pos0, eos, 0, output, emstack);
+        pos = parse_inline_loop (bos, pos0, eos, 0, output, dict, emstack);
         if (pos0 == pos && ']' == *pos)
             pos = parse_text (pos, pos + 1, output);
     }
@@ -1501,18 +1526,7 @@ print_innerlink (token_iterator p, std::wostream& output, refdict_type const& di
     ++p;
     char_iterator titleb = stremtpy.cbegin ();
     char_iterator titlee = stremtpy.cend ();
-    if (LINKID == p->kind) {
-        std::wstring linkid = decode_linkid (p->cbegin, p->cend);
-        auto i = dict.find (linkid);
-        if (i != dict.end ()) {
-            print_with_escape_uri (
-                i->second.uri.cbegin (), i->second.uri.cend (), output);
-            titleb = i->second.title.cbegin ();
-            titlee = i->second.title.cend ();
-        }
-        ++p;
-    }
-    else if (URI == p->kind) {
+    if (URI == p->kind) {
         print_with_escape_uri (p->cbegin, p->cend, output);
         ++p;
         if (TITLE == p->kind) {
@@ -1600,7 +1614,7 @@ print_block (std::deque<token_type> const& input,
             if (src.size () > 0 && '\n' == src.back ())
                 src.pop_back ();
             std::deque<token_type> inline_input;
-            parse_inline (src, inline_input);
+            parse_inline (src, inline_input, dict);
             print_inline (inline_input, output, dict);
         }
         if (olddot == dot)
