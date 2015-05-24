@@ -2,9 +2,7 @@
  *
  * LIMITATIONS:
  *
- *  1. emphasis and strong are allowed at top levels.
- *     not allowed in the [this is *asterisks*] (#example) inner link text.
- *  2. fixed four columns tab stops.
+ *  1. fixed four columns tab stops.
  *
  * License: The BSD 3-Clause
  *
@@ -123,8 +121,8 @@ struct reflink_type {
     std::wstring title;
 };
 
-struct emphasis_patch {
-    int pos;
+struct nest_type {
+    std::size_t pos;
     int n;
 };
 
@@ -970,9 +968,9 @@ split_lines (std::wstring const &input, std::deque<token_type>& output,
 
 static char_iterator
 parse_inline_loop (char_iterator const bos, char_iterator const pos,
-    char_iterator const eos, int const nestlevel,
+    char_iterator const eos,
     std::deque<token_type>& output, refdict_type const& dict,
-    std::deque<emphasis_patch>& emstack);
+    std::deque<nest_type>& nest);
 
 static char_iterator
 parse_text (char_iterator const tbegin, char_iterator const tend,
@@ -990,35 +988,50 @@ parse_text (char_iterator const tbegin, char_iterator const tend,
     return tend;
 }
 
+bool nest_exists (std::deque<nest_type>& nestlist, int n)
+{
+    for (auto i = nestlist.cbegin (); i < nestlist.cend (); ++i)
+        if (n == 0 && i->n == 0)
+            return true;
+        else if (n == 1 && (i->n == 1 || i->n == 3))
+            return true;
+        else if (n == 2 && (i->n == 2 || i->n == 3))
+            return true;
+        else if (n == 3 && (i->n == 1 || i->n == 2 || i->n == 3))
+            return true;
+    return false;
+}
+
 static void
 patch_emphasis (char_iterator embegin, char_iterator emend,
     bool leftwhite, bool rightwhite,
-    std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
+    std::deque<token_type>& output, std::deque<nest_type>& nest)
 {
-    typedef std::deque<emphasis_patch>::const_iterator emiterator;
+    typedef std::deque<nest_type>::const_iterator emiterator;
     int n1 = emend - embegin;
     int n2 = 3 - n1;
     int sem1 = 1 == n1 ? SEM : SSTRONG;
     int eem1 = 1 == n1 ? EEM : ESTRONG;
     int sem2 = 1 == n2 ? SEM : SSTRONG;
-    if (emstack.empty () || emstack.back ().n == n2) {
+    bool already = nest_exists (nest, n1);
+    if (! already) {
         if (! rightwhite) {
-            int backref = static_cast<int> (output.size ());
-            emstack.push_back ({backref, n1});
+            nest.push_back ({output.size (), n1});
             output.push_back ({sem1, embegin, emend});
             return;
         }
     }
-    else if (emstack.back ().n > 0) {
-        int smark = output[emstack.back ().pos].cbegin[0];
+    else if (nest.back ().n == n1 || nest.back ().n == 3) {
+        int smark = output[nest.back ().pos].cbegin[0];
         if (! leftwhite && smark == embegin[0]) {
-            emstack.pop_back ();
+            nest.pop_back ();
             output.push_back ({eem1, embegin, emend});
-            if (! emstack.empty () && emstack[0].n == 3) {
-                output[emstack[0].pos].kind = sem2;
-                output[emstack[0].pos].cend = output[emstack[0].pos].cbegin + n2;
-                output[emstack[0].pos + 1].kind = sem1;
-                emstack[0].n = n2;
+            if (! nest.empty () && nest.back ().n == 3) {
+                int pos = nest.back ().pos;
+                output[pos].kind = sem2;
+                output[pos].cend = output[pos].cbegin + n2;
+                output[pos + 1].kind = sem1;
+                nest.back ().n = n2;
             }
             return;
         }
@@ -1029,33 +1042,35 @@ patch_emphasis (char_iterator embegin, char_iterator emend,
 static void
 patch_emphasis_three (char_iterator embegin, char_iterator emend,
     bool leftwhite, bool rightwhite,
-    std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
+    std::deque<token_type>& output, std::deque<nest_type>& nest)
 {
-    std::size_t emsize = emstack.size ();
-    if (0 == emsize) {
+    std::size_t nnest = nest.size ();
+    bool already = nest_exists (nest, 3);
+    if (! already) {
         if (! rightwhite) {
-            int backref = static_cast<int> (output.size ());
-            emstack.push_back ({backref, 3});
-            emstack.push_back ({backref, 3});
+            nest.push_back ({output.size (), 3});
+            nest.push_back ({output.size (), 3});
             output.push_back ({SSTRONG, embegin, emend});
             output.push_back ({SEM, embegin, embegin});
             return;
         }
     }
-    else if (emsize >= 2 && emstack[emsize - 1].n > 0 && emstack[emsize - 2].n > 0) {
-        int smark = output[emstack.back ().pos].cbegin[0];
+    else if (nnest >= 2 && nest[nnest - 1].n > 0 && nest[nnest - 2].n > 0) {
+        int smark = output[nest.back ().pos].cbegin[0];
         if (leftwhite || smark != embegin[0])
             ;
-        else if (emstack.back ().n != 2) {
+        else if (nest.back ().n != 2) {
             output.push_back ({EEM, embegin, emend});
             output.push_back ({ESTRONG, embegin, emend});
-            emstack.clear ();
+            nest.pop_back ();
+            nest.pop_back ();
             return;
         }
         else {
             output.push_back ({ESTRONG, embegin, emend});
             output.push_back ({EEM, embegin, emend});
-            emstack.clear ();
+            nest.pop_back ();
+            nest.pop_back ();
             return;
         }
     }
@@ -1107,8 +1122,8 @@ parse_inlinecode (char_iterator const pos, char_iterator const eos,
 
 static char_iterator
 parse_emphasis (char_iterator const bos, char_iterator const pos,
-    char_iterator const eos, int const nestlevel,
-    std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
+    char_iterator const eos,
+    std::deque<token_type>& output, std::deque<nest_type>& nest)
 {
     char_iterator p1 = scan_of (pos, eos, 1, -1, ismdemphasis);
     int n = p1 - pos;
@@ -1116,14 +1131,14 @@ parse_emphasis (char_iterator const bos, char_iterator const pos,
     bool rightwhite = p1 == eos || ismdwhite (p1[0])
         || (('.' == p1[0] || ',' == p1[0] || ';' == p1[0] || ':' == p1[0])
             && (p1 + 1 == eos || ismdwhite (p1[1])));
-    if (nestlevel > 0 || n > 3 || (leftwhite && rightwhite))
+    if (n > 3 || (leftwhite && rightwhite))
         return parse_text (pos, p1, output);
     else if (n == 1)
-        patch_emphasis (pos, p1, leftwhite, rightwhite, output, emstack);
+        patch_emphasis (pos, p1, leftwhite, rightwhite, output, nest);
     else if (n == 2)
-        patch_emphasis (pos, p1, leftwhite, rightwhite, output, emstack);
+        patch_emphasis (pos, p1, leftwhite, rightwhite, output, nest);
     else if (n == 3)
-        patch_emphasis_three (pos, p1, leftwhite, rightwhite, output, emstack);
+        patch_emphasis_three (pos, p1, leftwhite, rightwhite, output, nest);
     return p1;
 }
 
@@ -1222,13 +1237,10 @@ static char_iterator
 parse_make_link (
     char_iterator const cbegin,
     char_iterator const cend,
-    int const nestlevel,
     std::deque<token_type>& inner,
     std::deque<token_type>& attribute,
     std::deque<token_type>& output)
 {
-    if (nestlevel > 0)
-        return parse_text (cbegin, cend, output);
     output.push_back ({SABEGIN, cbegin, cbegin});
     output.insert (output.end (), attribute.begin (), attribute.end ());
     output.push_back ({SAEND, cbegin, cbegin});
@@ -1258,28 +1270,30 @@ parse_link (
     char_iterator const bos,
     char_iterator const pos,
     char_iterator const eos,
-    int const nestlevel,
     std::deque<token_type>& output, refdict_type const& dict,
-    std::deque<emphasis_patch>& emstack)
+    std::deque<nest_type>& nest)
 {
     std::deque<token_type> inner;
     std::deque<token_type> attribute;
+    nest.push_back ({output.size (), 0});
     char_iterator p1 = scan_of (pos, eos, 1, 1, '[');
     if (pos == p1)
         return pos;
     char_iterator p2
-        = parse_inline_loop (bos, p1, eos, nestlevel + 1, inner, dict, emstack);
+        = parse_inline_loop (bos, p1, eos, inner, dict, nest);
     char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
+    nest.pop_back ();
+    bool already = nest_exists (nest, 0);
     if (p1 == p2 || p2 == p3)
         return parse_text (pos, p1, output);
     char_iterator p4 = parse_link_paren (p3, eos, attribute);
-    if (p3 < p4)
-        return parse_make_link (pos, p4, nestlevel, inner, attribute, output);
+    if (! already && p3 < p4)
+        return parse_make_link (pos, p4, inner, attribute, output);
     char_iterator p5 = parse_link_bracket (p3, eos, p1, p2, attribute);
-    if (parse_fetch_reference_link (dict, attribute))
-        return parse_make_link (pos, p5, nestlevel, inner, attribute, output);
+    if (! already && parse_fetch_reference_link (dict, attribute))
+        return parse_make_link (pos, p5, inner, attribute, output);
     parse_text (pos, p1, output);           // '['
-    parse_inline_loop (bos, p1, p2, nestlevel, output, dict, emstack);
+    parse_inline_loop (bos, p1, p2, output, dict, nest);
     return parse_text (p2, p5, output);    // ']'
 }
 
@@ -1327,10 +1341,9 @@ parse_inline_loop (
     char_iterator const bos,
     char_iterator const pos,
     char_iterator const eos,
-    int const nestlevel,
     std::deque<token_type>& output,
     refdict_type const& dict,
-    std::deque<emphasis_patch>& emstack)
+    std::deque<nest_type>& nest)
 {
     char_iterator p1 = pos;
     while (p1 < eos && ']' != *p1) {
@@ -1341,11 +1354,11 @@ parse_inline_loop (
         else if ('`' == *p1)
             p1 = parse_inlinecode (p1, eos, output);
         else if ('*' == *p1 || '_' == *p1)
-            p1 = parse_emphasis (bos, p1, eos, nestlevel, output, emstack);
+            p1 = parse_emphasis (bos, p1, eos, output, nest);
         else if ('<' == *p1)
             p1 = parse_angle (p1, eos, output);
         else if ('[' == *p1)
-            p1 = parse_link (bos, p1, eos, nestlevel, output, dict, emstack);
+            p1 = parse_link (bos, p1, eos, output, dict, nest);
         else if ('!' == *p1)
             p1 = parse_image (p1, eos, output, dict);
         else {
@@ -1362,19 +1375,19 @@ static void
 parse_inline (std::wstring const& input, std::deque<token_type>& output,
     refdict_type const& dict)
 {
-    std::deque<emphasis_patch> emstack;
+    std::deque<nest_type> nest;
     char_iterator const bos = input.cbegin ();
     char_iterator const eos = input.cend ();
     char_iterator pos = bos;
     while (pos < eos) {
         char_iterator pos0 = pos;
-        pos = parse_inline_loop (bos, pos0, eos, 0, output, dict, emstack);
+        pos = parse_inline_loop (bos, pos0, eos, output, dict, nest);
         if (pos0 == pos && ']' == *pos)
             pos = parse_text (pos, pos + 1, output);
     }
-    while (! emstack.empty ()) {
-        output[emstack.back ().pos].kind = TEXT;
-        emstack.pop_back ();
+    while (! nest.empty ()) {
+        output[nest.back ().pos].kind = TEXT;
+        nest.pop_back ();
     }
 }
 
