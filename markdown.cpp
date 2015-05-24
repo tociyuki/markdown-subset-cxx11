@@ -1383,7 +1383,7 @@ check_html5entity (char_iterator& s0, char_iterator const e)
 static std::wstring
 decode_utf8 (std::string octets)
 {
-    std::locale loc (std::locale::classic (), "ja_JP.UTF-8", std::locale::ctype);
+    std::locale loc (std::locale::classic (), "C.UTF-8", std::locale::ctype);
     auto& cvt = std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>> (loc);
     auto mb = std::mbstate_t ();
     std::wstring str (octets.size (), L'\0');
@@ -1398,7 +1398,7 @@ decode_utf8 (std::string octets)
 static std::string
 encode_utf8 (std::wstring str)
 {
-    std::locale loc (std::locale::classic (), "ja_JP.UTF-8", std::locale::ctype);
+    std::locale loc (std::locale::classic (), "C.UTF-8", std::locale::ctype);
     auto& cvt = std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>> (loc);
     auto mb = std::mbstate_t ();
     std::string octets(str.size () * cvt.max_length (), '\0');
