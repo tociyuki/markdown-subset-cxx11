@@ -1010,7 +1010,8 @@ patch_emphasis (char_iterator embegin, char_iterator emend,
         }
     }
     else if (emstack.back ().n != n2) {
-        if (! leftwhite) {
+        int smark = output[emstack.back ().pos].cbegin[0];
+        if (! leftwhite && smark == embegin[0]) {
             emstack.pop_back ();
             output.push_back ({eem1, embegin, emend});
             if (! emstack.empty () && emstack[0].n == 3) {
@@ -1041,7 +1042,8 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
         }
     }
     else if (emstack.size () == 2) {
-        if (leftwhite)
+        int smark = output[emstack.back ().pos].cbegin[0];
+        if (leftwhite || smark != embegin[0])
             ;
         else if (emstack.back ().n != 2) {
             output.push_back ({EEM, embegin, emend});
@@ -1309,7 +1311,7 @@ parse_inline_loop (
             p1 = parse_escape (p1, eos, output);
         else if ('`' == *p1)
             p1 = parse_inlinecode (p1, eos, output);
-        else if ('*' == *p1)
+        else if ('*' == *p1 || '_' == *p1)
             p1 = parse_emphasis (bos, p1, eos, nestlevel, output, emstack);
         else if ('<' == *p1)
             p1 = parse_angle (p1, eos, output);
@@ -1318,7 +1320,7 @@ parse_inline_loop (
         else if ('!' == *p1)
             p1 = parse_image (p1, eos, output, dict);
         else {
-            static std::wstring ccls (L" \\`*<![]");
+            static std::wstring ccls (L" \\`*_<![]");
             char_iterator p2
                 = std::find_first_of (p1, eos, ccls.cbegin (), ccls.cend ());
             p1 = parse_text (p1, p2, output);
