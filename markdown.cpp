@@ -1154,7 +1154,7 @@ bool
 match_uri (char_iterator const p, char_iterator const e)
 {
     static const wchar_t *scheme[] = {
-        L"https://", L"http://", L"ftp://", L"ftps://", L"mailto"};
+        L"https://", L"http://", L"ftp://", L"ftps://", L"mailto:"};
     int n = sizeof (scheme) / sizeof (scheme[0]);
     for (int i = 0; i < n; ++i) {
         std::wstring s (scheme[i]);
@@ -1220,9 +1220,12 @@ parse_link_paren (
     char_iterator p1 = pos + 1;
     char_iterator p5 = rscan_of (p1, p6 - 1, ismdwhite);
     char_iterator p2 = p5;
-    if ('<' == *p2)
-        p2 = scan_quoted (p2, p5, '<', '>', '\\', ismdany);
-    p2 = p2 == p5 ? p1 + 1 : p2 + 1;
+    if ('<' == *p1) {
+        p2 = scan_quoted (p1, p5, '<', '>', '\\', ismdany);
+        p2 = p1 == p2 ? p1 + 1 : p2 - 1;
+    }
+    else
+        p2 = p2 == p5 ? p1 + 1 : p2 + 1;
     char_iterator p3 = p5;
     char_iterator p4 = p5;
     if ('"' == p5[-1] || '\'' == p5[-1]) {
