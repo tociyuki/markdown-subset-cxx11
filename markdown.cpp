@@ -1168,21 +1168,31 @@ parse_link_paren (
     char_iterator const eos,
     std::deque<token_type>& attribute)
 {
-    char_iterator p9 = scan_quoted (pos, eos, '(', ')', -1, ismdany);
-    if (pos == p9)
+    char_iterator p6 = scan_quoted (pos, eos, '(', ')', -1, ismdany);
+    if (pos == p6)
         return pos;
     char_iterator p1 = pos + 1;
-    char_iterator p8 = p9 - 1;
-    char_iterator p2 = scan_of (p1, p8, 1, -1, ismdgraph);
-    char_iterator p7 = rscan_of (p2, p8, ismdwhite);
-    if (p2 - p1 > 1 && '<' == p1[0] && '>' == p2[-1])
-        attribute.push_back ({URI, p1 + 1, p2 - 1});
+    char_iterator p5 = rscan_of (p1, p6 - 1, ismdwhite);
+    char_iterator p2 = p5;
+    if ('<' == *p2)
+        p2 = std::find (p1, p5, '>');
+    p2 = p2 == p5 ? p1 + 1 : p2 + 1;
+    char_iterator p3 = p5;
+    char_iterator p4 = p5;
+    if ('"' == p5[-1] || '\'' == p5[-1]) {
+        int qq = p5[-1];
+        p4 = std::find (p2, p5, qq);
+        while (p4 < p5 && ! ismdwhite (p4[-1]))
+            p4 = std::find (p4 + 1, p5, qq);
+        p3 = rscan_of (p2, p4, ismdwhite);
+    }
+    if (p3 - p1 > 1 && '<' == p1[0] && '>' == p3[-1])
+        attribute.push_back ({URI, p1 + 1, p3 - 1});
     else
-        attribute.push_back ({URI, p1, p2});
-    char_iterator p3 = scan_of (p2, p7, 1, -1, ismdwhite);
-    if (p2 < p3 && ('"' == *p3 || '\'' == *p3) && *p3 == p7[-1])
-        attribute.push_back ({TITLE, p3 + 1, p7 - 1});
-    return p9;
+        attribute.push_back ({URI, p1, p3});
+    if (p5 - p4 > 1 && p4[0] == p5[-1] && ('"' == p5[-1] || '\'' == p5[-1]))
+        attribute.push_back ({TITLE, p4 + 1, p5 - 1});
+    return p6;
 }
 
 static char_iterator
