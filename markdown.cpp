@@ -316,6 +316,19 @@ decode_linkid (char_iterator s, char_iterator const eos)
     return id;
 }
 
+/* unescape backslash */
+static std::wstring
+unescape_backslash (char_iterator s, char_iterator const eos)
+{
+    std::wstring str;
+    for (; s < eos; ++s)
+        if ('\\' == *s && s + 1 < eos && ismdescapable (s[1]))
+            str.push_back (*++s);
+        else
+            str.push_back (*s);
+    return str;
+}
+
 /* parse_block - BLOCK parser */
 
 /* four columns tab */
@@ -779,7 +792,7 @@ scan_htmlattr (char_iterator const pos, char_iterator const eos)
     char_iterator p5 = scan_of (p4, eos, 0, -1, ismdwhite);
     char_iterator p6 = p5;
     if (p5 < eos && ('"' == *p5 || '\'' == *p5 || '`' == *p5))
-        p6 = scan_quoted (p5, eos, *p5, *p5, -1, ismdany);
+        p6 = scan_quoted (p5, eos, *p5, *p5, '\\', ismdany);
     else
         p6 = scan_of (p5, eos, 1, -1, ishtattr);
     if (p6 == p5)
@@ -879,7 +892,7 @@ scan_refdef_uri (char_iterator const pos, char_iterator const eos,
 {
     char_iterator p1 = pos;
     char_iterator p2 = pos;
-    char_iterator p3 = scan_quoted (pos, eos, '<', '>', -1, ismdprint);
+    char_iterator p3 = scan_quoted (pos, eos, '<', '>', '\\', ismdprint);
     if (pos < p3) {
         p1 = pos + 1;
         p2 = p3 - 1;
@@ -1094,7 +1107,7 @@ parse_escape (char_iterator const pos, char_iterator const eos,
     if (p1 == p2)
         return parse_text (pos, p1, output);
     else
-        return parse_text (p1, p2, output);
+        return parse_text (pos, p2, output);    // deferred unescape
 }
 
 static char_iterator
@@ -1161,7 +1174,7 @@ parse_angle (char_iterator const pos, char_iterator const eos,
         output.push_back ({HTML, pos, p1});
         return p1;
     }
-    char_iterator p2 = scan_quoted (pos, eos, '<', '>', -1, ismdprint);
+    char_iterator p2 = scan_quoted (pos, eos, '<', '>', '\\', ismdprint);
     if (p2 - pos > 2) {
         if (match_uri (pos + 1, p2 - 1)) {
             output.push_back ({SABEGIN, pos, pos});
@@ -1187,7 +1200,7 @@ parse_link_bracket (
     std::deque<token_type>& attribute)
 {
     char_iterator p1 = scan_of (pos, eos, 0, -1, ismdwhite);
-    char_iterator p2 = scan_quoted (p1, eos, '[', ']', -1, ismdany);
+    char_iterator p2 = scan_quoted (p1, eos, '[', ']', '\\', ismdany);
     if (p2 - p1 > 2)
         attribute.push_back ({LINKID, p1 + 1, p2 - 1});
     else
@@ -1201,7 +1214,7 @@ parse_link_paren (
     char_iterator const eos,
     std::deque<token_type>& attribute)
 {
-    char_iterator p6 = scan_quoted (pos, eos, '(', ')', -1, ismdany);
+    char_iterator p6 = scan_quoted (pos, eos, '(', ')', '\\', ismdany);
     if (pos == p6)
         return pos;
     char_iterator p1 = pos + 1;
@@ -1322,7 +1335,7 @@ parse_image (
     char_iterator p2 = scan_of (p1, eos, 1, 1, '[');
     if (pos == p1 || p1 == p2)
         return pos;
-    char_iterator p3 = scan_quoted (p1, eos, '[', ']', -1, ismdany);
+    char_iterator p3 = scan_quoted (p1, eos, '[', ']', '\\', ismdany);
     if (p1 == p3)
         return parse_text (pos, p2, output);
     inner.push_back ({ALT, p2, p3 - 1});
@@ -1535,7 +1548,8 @@ print_innerlink (token_iterator p, std::wostream& output, refdict_type const& di
     char_iterator titleb = stremtpy.cbegin ();
     char_iterator titlee = stremtpy.cend ();
     if (URI == p->kind) {
-        print_with_escape_uri (p->cbegin, p->cend, output);
+        std::wstring uri = unescape_backslash (p->cbegin, p->cend);
+        print_with_escape_uri (uri.cbegin(), uri.cend (), output);
         ++p;
         if (TITLE == p->kind) {
             titleb = p->cbegin;
@@ -1545,14 +1559,16 @@ print_innerlink (token_iterator p, std::wostream& output, refdict_type const& di
     }
     if (IMGBEGIN == skind) {
         output << kindname[p->kind];    // ALT
-        print_with_escape_html (p->cbegin, p->cend, output);
+        std::wstring alt = unescape_backslash (p->cbegin, p->cend);
+        print_with_escape_html (alt.cbegin(), alt.cend (), output);
         ++p;
     }
     if (titleb < titlee) {
         output << kindname[TITLE];
-        print_with_escape_html (titleb, titlee, output);
+        std::wstring title = unescape_backslash (titleb, titlee);
+        print_with_escape_html (title.cbegin(), title.cend (), output);
     }
-    output << kindname[p->kind];
+    output << kindname[p->kind];  // EAEND || IMGEND
     return p;
 }
 
@@ -1560,11 +1576,9 @@ static void
 print_inline (std::deque<token_type>const & input, std::wostream& output,
     refdict_type const& dict)
 {
-    for (token_iterator p = input.cbegin (); p != input.cend (); ++p) {
+    for (token_iterator p = input.cbegin (); p < input.cend (); ++p) {
         if (BREAK <= p->kind)
             output << kindname[p->kind];
-        else if (TEXT == p->kind)
-            print_with_escape_html (p->cbegin, p->cend, output);
         else if (CODE == p->kind)
             print_with_escape_htmlall (p->cbegin, p->cend, output);
         else if (HTML == p->kind)
@@ -1572,6 +1586,14 @@ print_inline (std::deque<token_type>const & input, std::wostream& output,
                 output << *i;
         else if (SABEGIN == p->kind || IMGBEGIN == p->kind)
             p = print_innerlink (p, output, dict);
+        else if (TEXT == p->kind) {
+            std::wstring src;
+            for (; p < input.cend () && TEXT == p->kind; ++p)
+                src.append (p->cbegin, p->cend);
+            std::wstring text = unescape_backslash (src.cbegin(), src.cend ());
+            print_with_escape_html (text.cbegin (), text.cend (), output);
+            --p;
+        }
     }
 }
 
