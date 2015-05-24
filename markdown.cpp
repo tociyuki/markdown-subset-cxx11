@@ -1586,6 +1586,8 @@ print_block (std::deque<token_type> const& input,
     std::deque<token_type> doc;
     line_iterator dot = input.cbegin ();
     line_iterator dol = input.cend ();
+    for (; dot < dol && BLANK == dot->kind; ++dot)
+        ;
     while (dot < dol) {
         line_iterator olddot = dot;
         if (BLANK == dot->kind) {
