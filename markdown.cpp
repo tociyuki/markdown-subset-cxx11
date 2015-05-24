@@ -290,6 +290,8 @@ scan_quoted (char_iterator const pos, char_iterator const eos,
         if (escape == *p && p + 1 < eos
                 && (escape == p[1] || rquote == p[1] || lquote == p[1]))
             ++p;
+        else if (lquote == '(' && '<' == *p)
+            p = scan_quoted (p, eos, '<', '>', escape, predicate) - 1;
         else if (rquote == *p)
             --level;
         else if (lquote == *p)
@@ -1499,7 +1501,7 @@ static void
 print_with_escape_uri (char_iterator s, char_iterator const e,
     std::wostream& output)
 {
-    static const std::string safe ("-_.,:;+=()/~?#");
+    static const std::string safe ("-_.,:;*+=()/~?#");
     static const std::string amp ("&amp;");
     std::wstring w (s, e);
     std::string o = encode_utf8 (w);
