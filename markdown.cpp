@@ -1276,6 +1276,10 @@ parse_link (
         return pos;
     char_iterator p2
         = parse_inline_loop (bos, p1, eos, inner, dict, nest);
+    while (nest.back ().n != 0) {
+        inner[nest.back ().pos].kind = TEXT;
+        nest.pop_back ();
+    }
     char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
     nest.pop_back ();
     bool already = nest_exists (nest, 0);

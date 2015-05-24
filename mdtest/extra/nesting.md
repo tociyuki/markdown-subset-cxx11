@@ -6,3 +6,15 @@ nesting anchor and emphasis
 
 ***em-strong [not anchor** em] not nesting*
 
+*em [anchor **string](foo) nesting*
+
+[anchor *string](foo) nesting
+
+[anchor **string](foo) nesting
+
+[anchor ***string](foo) nesting
+
+[anchor ***em*](foo) nesting
+
+[anchor ***strong**](foo) nesting
+
