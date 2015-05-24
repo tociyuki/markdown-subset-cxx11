@@ -1221,7 +1221,7 @@ parse_link_paren (
     char_iterator p5 = rscan_of (p1, p6 - 1, ismdwhite);
     char_iterator p2 = p5;
     if ('<' == *p2)
-        p2 = std::find (p1, p5, '>');
+        p2 = scan_quoted (p2, p5, '<', '>', '\\', ismdany);
     p2 = p2 == p5 ? p1 + 1 : p2 + 1;
     char_iterator p3 = p5;
     char_iterator p4 = p5;
@@ -1519,7 +1519,7 @@ print_with_escape_uri (char_iterator s, char_iterator const e,
     for (std::string::const_iterator s = o.begin (); s != o.end (); ++s) {
         int c = static_cast<unsigned char> (*s);
         if (ismdalnum (c) || safe.find (c) != std::string::npos)
-            t.append (1, c);        // [0-9A-Za-z\-_.,:;+=()/~?\#]
+            t.append (1, c);        // [0-9A-Za-z\-_.,:;*+=()/~?\#]
         else if (s + 2 < o.end ()
                 && c == '%' && ismdxdigit (s[1]) && ismdxdigit (s[2]))
             t.append (1, c);        // %[0-9A-Fa-f]{2}
