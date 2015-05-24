@@ -1113,7 +1113,9 @@ parse_emphasis (char_iterator const bos, char_iterator const pos,
     char_iterator p1 = scan_of (pos, eos, 1, -1, ismdemphasis);
     int n = p1 - pos;
     bool leftwhite = pos == bos || ismdwhite (pos[-1]);
-    bool rightwhite = p1 == eos || ismdwhite (p1[0]);
+    bool rightwhite = p1 == eos || ismdwhite (p1[0])
+        || (('.' == p1[0] || ',' == p1[0] || ';' == p1[0] || ':' == p1[0])
+            && (p1 + 1 == eos || ismdwhite (p1[1])));
     if (nestlevel > 0 || n > 3 || (leftwhite && rightwhite))
         return parse_text (pos, p1, output);
     else if (n == 1)
