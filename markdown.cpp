@@ -993,11 +993,15 @@ parse_text (char_iterator const tbegin, char_iterator const tend,
 
 static void
 patch_emphasis (char_iterator embegin, char_iterator emend,
-    bool leftwhite, bool rightwhite, int n1, int n2,
-    int sem1, int eem1, int sem2,
+    bool leftwhite, bool rightwhite,
     std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
 {
-    if (emstack.empty () || (emstack.size () == 1 && emstack[0].n == n2)) {
+    int n1 = emend - embegin;
+    int n2 = 3 - n1;
+    int sem1 = 1 == n1 ? SEM : SSTRONG;
+    int eem1 = 1 == n1 ? EEM : ESTRONG;
+    int sem2 = 1 == n2 ? SEM : SSTRONG;
+    if (emstack.empty () || emstack.back ().n == n2) {
         if (! rightwhite) {
             int backref = static_cast<int> (output.size ());
             emstack.push_back ({backref, n1});
@@ -1005,7 +1009,7 @@ patch_emphasis (char_iterator embegin, char_iterator emend,
             return;
         }
     }
-    else if (emstack.back ().n != n2) {
+    else if (emstack.back ().n > 0) {
         int smark = output[emstack.back ().pos].cbegin[0];
         if (! leftwhite && smark == embegin[0]) {
             emstack.pop_back ();
@@ -1027,7 +1031,8 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
     bool leftwhite, bool rightwhite,
     std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
 {
-    if (emstack.empty ()) {
+    std::size_t emsize = emstack.size ();
+    if (0 == emsize) {
         if (! rightwhite) {
             int backref = static_cast<int> (output.size ());
             emstack.push_back ({backref, 3});
@@ -1037,7 +1042,7 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
             return;
         }
     }
-    else if (emstack.size () == 2) {
+    else if (emsize >= 2 && emstack[emsize - 1].n > 0 && emstack[emsize - 2].n > 0) {
         int smark = output[emstack.back ().pos].cbegin[0];
         if (leftwhite || smark != embegin[0])
             ;
@@ -1112,11 +1117,9 @@ parse_emphasis (char_iterator const bos, char_iterator const pos,
     if (nestlevel > 0 || n > 3 || (leftwhite && rightwhite))
         return parse_text (pos, p1, output);
     else if (n == 1)
-        patch_emphasis (pos, p1, leftwhite, rightwhite,
-            1, 2, SEM, EEM, SSTRONG, output, emstack);
+        patch_emphasis (pos, p1, leftwhite, rightwhite, output, emstack);
     else if (n == 2)
-        patch_emphasis (pos, p1, leftwhite, rightwhite,
-            2, 1, SSTRONG, ESTRONG, SEM, output, emstack);
+        patch_emphasis (pos, p1, leftwhite, rightwhite, output, emstack);
     else if (n == 3)
         patch_emphasis_three (pos, p1, leftwhite, rightwhite, output, emstack);
     return p1;
