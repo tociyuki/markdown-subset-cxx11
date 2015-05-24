@@ -1003,7 +1003,6 @@ patch_emphasis (char_iterator embegin, char_iterator emend,
     bool leftwhite, bool rightwhite,
     std::deque<token_type>& output, std::deque<nest_type>& nest)
 {
-    typedef std::deque<nest_type>::const_iterator emiterator;
     int n1 = emend - embegin;
     int n2 = 3 - n1;
     int sem1 = 1 == n1 ? SEM : SSTRONG;
