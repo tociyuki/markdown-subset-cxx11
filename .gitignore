@@ -1,0 +1,5 @@
+*.o
+*~
+mkdown
+snipet
+*.out

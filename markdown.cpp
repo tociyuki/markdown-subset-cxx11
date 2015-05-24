@@ -710,19 +710,14 @@ parse_block (std::deque<token_type> const& input, std::deque<token_type>& output
 
 /* split_lines - BLOCK tokenizer */
 
-static bool
+static char_iterator
 check_blockend (char_iterator const pos, char_iterator const eos)
 {
-    char_iterator p1 = scan_of (pos, eos, 1, 1, '\n');
-    if (p1 >= eos)
-        return true;
-    if (p1 == pos)
-        return false;
-    char_iterator p2 = scan_of (p1, eos, 0, -1, ismdspace);
-    char_iterator p3 = scan_of (p2, eos, 1, 1, '\n');
-    if (p3 >= eos)
-        return true;
-    return p2 < p3;
+    char_iterator p1 = scan_of (pos, eos, 0, -1, ismdspace);
+    char_iterator p2 = scan_of (p1, eos, 1, 1, '\n');
+    char_iterator p3 = scan_of (p2, eos, 0, -1, ismdspace);
+    char_iterator p4 = scan_of (p3, eos, 1, 1, '\n');
+    return eos <= p4 || (p1 < p2 && p3 < p4) ? p2 : pos;
 }
 
 static char_iterator
@@ -749,11 +744,12 @@ parse_blockcode (char_iterator const bos, char_iterator const pos,
             return pos;
         cend = p4;
         p3 = p4 + pat.size ();
-        if (check_blockend (p3, eos)) {
+        char_iterator p5 = check_blockend (p3, eos);
+        if (p5 >= eos || p3 < p5) {
             output.push_back ({SPRE, p1, p2});
             output.push_back ({CODE, cbegin, cend});
             output.push_back ({EPRE, cend, cend});
-            return p3;
+            return p5;
         }
     }
     return pos;
@@ -842,10 +838,10 @@ parse_blockhtml (char_iterator const bos, char_iterator const pos,
     if (blocktag.find (pat1) == std::wstring::npos)
         return pos;
     if (tagname == L"hr" || tagname == L"!COMMENT" || '/' == p1[-2]) {
-        if (check_blockend (p1, eos)) {
-            p1 = scan_of (p1, eos, 0, 1, '\n');
-            output.push_back ({HTML, pos, p1});
-            return p1;
+        char_iterator p3 = check_blockend (p1, eos);
+        if (p3 >= eos || p1 < p3) {
+            output.push_back ({HTML, pos, p3});
+            return p3;
         }
     }
     else {
@@ -858,10 +854,10 @@ parse_blockhtml (char_iterator const bos, char_iterator const pos,
             p1 = scan_of (p3, eos, 1, 1, '>');
             if (p1 == p3)
                 return pos;
-            if (check_blockend (p1, eos)) {
-                p1 = scan_of (p1, eos, 0, 1, '\n');
-                output.push_back ({HTML, pos, p1});
-                return p1;
+            char_iterator p5 = check_blockend (p1, eos);
+            if (p5 >= eos || p1 < p5) {
+                output.push_back ({HTML, pos, p5});
+                return p5;
             }
         }
     }
