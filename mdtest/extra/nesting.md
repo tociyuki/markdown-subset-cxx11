@@ -18,3 +18,5 @@ nesting anchor and emphasis
 
 [anchor ***strong**](foo) nesting
 
+**not strong [anchor**](foo)
+

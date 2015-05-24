@@ -1592,7 +1592,8 @@ print_inline (std::deque<token_type>const & input, std::wostream& output,
         else if (TEXT == p->kind) {
             std::wstring src;
             for (; p < input.cend () && TEXT == p->kind; ++p)
-                src.append (p->cbegin, p->cend);
+                if (p->cbegin < p->cend)
+                    src.append (p->cbegin, p->cend);
             std::wstring text = unescape_backslash (src.cbegin(), src.cend ());
             print_with_escape_html (text.cbegin (), text.cend (), output);
             --p;
