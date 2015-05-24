@@ -2,10 +2,9 @@
  *
  * LIMITATIONS:
  *
- *  1. stars `*emphasis*` and `**strong**` but underlines.
- *  2. emphasis and strong are allowed at top levels.
+ *  1. emphasis and strong are allowed at top levels.
  *     not allowed in the [this is *asterisks*] (#example) inner link text.
- *  3. fixed four columns tab stops.
+ *  2. fixed four columns tab stops.
  *
  * License: The BSD 3-Clause
  *
@@ -996,6 +995,7 @@ patch_emphasis (char_iterator embegin, char_iterator emend,
     bool leftwhite, bool rightwhite,
     std::deque<token_type>& output, std::deque<emphasis_patch>& emstack)
 {
+    typedef std::deque<emphasis_patch>::const_iterator emiterator;
     int n1 = emend - embegin;
     int n2 = 3 - n1;
     int sem1 = 1 == n1 ? SEM : SSTRONG;
@@ -1038,7 +1038,7 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
             emstack.push_back ({backref, 3});
             emstack.push_back ({backref, 3});
             output.push_back ({SSTRONG, embegin, emend});
-            output.push_back ({SEM, embegin, emend});
+            output.push_back ({SEM, embegin, embegin});
             return;
         }
     }
