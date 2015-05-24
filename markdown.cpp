@@ -1122,6 +1122,20 @@ parse_emphasis (char_iterator const bos, char_iterator const pos,
     return p1;
 }
 
+bool
+match_uri (char_iterator const p, char_iterator const e)
+{
+    static const wchar_t *scheme[] = {
+        L"https://", L"http://", L"ftp://", L"ftps://", L"mailto"};
+    int n = sizeof (scheme) / sizeof (scheme[0]);
+    for (int i = 0; i < n; ++i) {
+        std::wstring s (scheme[i]);
+        if (e - p >= s.size () && std::equal (s.cbegin (), s.cend (), p))
+            return true;
+    }
+    return false;
+}
+
 static char_iterator
 parse_angle (char_iterator const pos, char_iterator const eos,
     std::deque<token_type>& output)
@@ -1134,12 +1148,16 @@ parse_angle (char_iterator const pos, char_iterator const eos,
     }
     char_iterator p2 = scan_quoted (pos, eos, '<', '>', -1, ismdprint);
     if (p2 - pos > 2) {
-        output.push_back ({SABEGIN, pos, pos});
-        output.push_back ({URI, pos + 1, p2 - 1});
-        output.push_back ({SAEND, p2, p2});
-        output.push_back ({TEXT, pos + 1, p2 - 1});
-        output.push_back ({EA, p2, p2});
-        return p2;
+        if (match_uri (pos + 1, p2 - 1)) {
+            output.push_back ({SABEGIN, pos, pos});
+            output.push_back ({URI, pos + 1, p2 - 1});
+            output.push_back ({SAEND, p2, p2});
+            output.push_back ({TEXT, pos + 1, p2 - 1});
+            output.push_back ({EA, p2, p2});
+            return p2;
+        }
+        else
+            parse_text (pos, p2, output);
     }
     char_iterator p3 = scan_of (pos, eos, 1, -1, '<');
     return parse_text (pos, p3, output);
