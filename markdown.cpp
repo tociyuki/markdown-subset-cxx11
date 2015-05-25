@@ -792,7 +792,7 @@ scan_htmlattr (char_iterator const pos, char_iterator const eos)
     char_iterator p5 = scan_of (p4, eos, 0, -1, ismdwhite);
     char_iterator p6 = p5;
     if (p5 < eos && ('"' == *p5 || '\'' == *p5 || '`' == *p5))
-        p6 = scan_quoted (p5, eos, *p5, *p5, '\\', ismdany);
+        p6 = scan_quoted (p5, eos, *p5, *p5, -1, ismdany);
     else
         p6 = scan_of (p5, eos, 1, -1, ishtattr);
     if (p6 == p5)
