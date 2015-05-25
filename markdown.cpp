@@ -40,7 +40,6 @@
 #include <map>
 #include <string>
 #include <algorithm>
-#include <functional>
 #include <locale>
 
 static const std::wstring blocktag (
@@ -107,7 +106,7 @@ static wchar_t const *kindname[]{
 };
 
 typedef std::wstring::const_iterator char_iterator;
-typedef std::function<bool(int)> char_predicate;
+typedef bool (*char_predicate) (int);
 
 struct token_type {
     int kind;
@@ -261,7 +260,7 @@ rscan_of (char_iterator const bos, char_iterator const pos, int c)
 
 static char_iterator
 rscan_of (char_iterator const bos, char_iterator const pos,
-          std::function<bool(int)> predicate)
+          char_predicate predicate)
 {
     char_iterator p = pos;
     for (; bos <= p - 1 && predicate (p[-1]); --p)
