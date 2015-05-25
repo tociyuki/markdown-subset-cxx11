@@ -1065,18 +1065,11 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
     }
     else if (nnest >= 2 && nest[nnest - 1].n > 0 && nest[nnest - 2].n > 0) {
         int smark = output[nest.back ().pos].cbegin[0];
-        if (leftwhite || smark != embegin[0])
-            ;
-        else if (nest.back ().n != 2) {
-            output.push_back ({EEM, embegin, emend});
-            output.push_back ({ESTRONG, embegin, emend});
-            nest.pop_back ();
-            nest.pop_back ();
-            return;
-        }
-        else {
-            output.push_back ({ESTRONG, embegin, emend});
-            output.push_back ({EEM, embegin, emend});
+        if (! leftwhite && smark == embegin[0]) {
+            int etag1 = nest.back ().n != 2 ? EEM : ESTRONG;
+            int etag2 = nest.back ().n != 2 ? ESTRONG : EEM;
+            output.push_back ({etag1, embegin, emend});
+            output.push_back ({etag2, embegin, emend});
             nest.pop_back ();
             nest.pop_back ();
             return;
