@@ -451,6 +451,8 @@ parse_atxheading (line_iterator const dot, line_iterator const dol,
     char_iterator p4 = dot->cend;
     p4 = rscan_of (p3, p4, ismdwhite);
     p4 = rscan_of (p3, p4, '#');
+    if (p4 < dot->cend && '\\' == p4[-1] && '#' == p4[0])
+        ++p4;
     p4 = rscan_of (p3, p4, ismdspace);
     if (p3 == p4)
         return dot;
