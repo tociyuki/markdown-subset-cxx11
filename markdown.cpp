@@ -552,7 +552,7 @@ parse_blockquote_line (line_iterator const dot, line_iterator const dol,
 {
     char_iterator p1 = scan_tab_not (dot->cbegin, dot->cend);
     char_iterator p2 = scan_of (p1, dot->cend, 0, 1, '>');
-    char_iterator p3 = scan_of (p2, dot->cend, 0, 1, ' ');
+    char_iterator p3 = scan_of (p2, dot->cend, 0, 1, ismdspace);
     char_iterator p4 = scan_of (p3, dot->cend, 0, -1, ismdspace);
     if (p4 >= dot->cend || '\n' == *p4)
         block.push_back ({BLANK, p4, dot->cend});
