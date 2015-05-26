@@ -12,5 +12,16 @@ markdown.o : markdown.cpp markdown.hpp
 main.o : main.cpp markdown.hpp
 	$(CXX) $(CXXFLAGS) -c main.cpp
 
+test : test_1_1 test_1_1p test_extra
+
+test_1_1 : mkdown
+	cd mdtest/1.1; make
+
+test_1_1p : mkdown
+	cd mdtest/1.1p; make
+
+test_extra : mkdown
+	cd mdtest/extra; make
+
 clean :
 	rm -f *.o $(OBJS)
