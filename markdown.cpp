@@ -952,7 +952,7 @@ parse_refdef (char_iterator const pos, char_iterator const eos,
 }
 
 static void
-split_lines (std::wstring const &input, std::deque<token_type>& output,
+split_lines (std::wstring const& input, std::deque<token_type>& output,
     refdict_type& dict)
 {
     char_iterator p4 = input.cbegin ();
@@ -1069,6 +1069,7 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
         if (! leftwhite && smark == embegin[0]) {
             int nback = nest.back ().n;
             int etag1 = nest.back ().n != 2 ? EEM : ESTRONG;
+            int stag2 = nest.back ().n != 2 ? SSTRONG : SEM;
             int etag2 = nest.back ().n != 2 ? ESTRONG : EEM;
             output.push_back ({etag1, embegin, emend});
             nest.pop_back ();
@@ -1080,7 +1081,7 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
                 output.push_back ({TEXT, embegin, embegin + 3 - nback});
             else {
                 nest.push_back ({output.size (), 3 - nback});
-                output.push_back ({etag2, embegin, embegin + 3 - nback});
+                output.push_back ({stag2, embegin, embegin + 3 - nback});
             }
             return;
         }
