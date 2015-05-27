@@ -611,13 +611,11 @@ parse_blockquote (line_iterator const dot, line_iterator const dol,
 
 static line_iterator
 parse_list_line (line_iterator const dot, line_iterator const dol,
-    std::deque<token_type>& block, bool& lazyline)
+    std::deque<token_type>& block)
 {
     char_iterator p1 = scan_listmark (dot->cbegin, dot->cend);
     if (p1 == dot->cbegin) {
         char_iterator p2 = scan_tab (dot->cbegin, dot->cend);
-        if (lazyline && dot->cbegin != p2)
-            block.push_back ({BLANK, p2, p2});
         block.push_back ({LINE, p2, dot->cend});
     }
     else {
@@ -631,7 +629,7 @@ parse_list_line (line_iterator const dot, line_iterator const dol,
 
 static line_iterator
 parse_list_blank (line_iterator const dot, line_iterator const dol,
-    std::deque<token_type>& block, bool& lazyline)
+    std::deque<token_type>& block)
 {
     line_iterator line2 = parse_blank (dot, dol, block);
     if (! (line2 != dol && LINE == line2->kind))
@@ -646,7 +644,6 @@ parse_list_blank (line_iterator const dot, line_iterator const dol,
             block.push_back (*line1);
     else if (p2 == line2->cbegin)
         return dot;
-     lazyline = false;
     return line2;
 }
 
@@ -665,14 +662,13 @@ parse_list (line_iterator const dot, line_iterator const dol,
     block.push_back ({stag, p2, p2});
     block.push_back ({SLITEM, p2, p2});
     block.push_back ({LINE, p2, dot->cend});
-    bool lazyline = false;
     line_iterator line1 = dot + 1;
     while (line1 != dol) {
         line_iterator line2 = line1;
         if (LINE == line1->kind)
-            line2 = parse_list_line (line1, dol, block, lazyline);
+            line2 = parse_list_line (line1, dol, block);
         else if (BLANK == line1->kind)
-            line2 = parse_list_blank (line1, dol, block, lazyline);
+            line2 = parse_list_blank (line1, dol, block);
         if (line2 == line1)
             break;
         line1 = line2;
