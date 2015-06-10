@@ -1066,7 +1066,7 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
             return;
         }
     }
-    else if (nnest >= 1 && nest[nnest - 1].n > 0) {
+    else if (nnest >= 1 && 1 <= nest[nnest - 1].n && nest[nnest - 1].n <= 3) {
         int smark = output[nest.back ().pos].cbegin[0];
         if (! leftwhite && smark == embegin[0]) {
             int nback = nest.back ().n;
@@ -1075,7 +1075,7 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
             int etag2 = nest.back ().n != 2 ? ESTRONG : EEM;
             output.push_back ({etag1, embegin, emend});
             nest.pop_back ();
-            if (nnest >= 2 && nest[nnest - 2].n > 0) {
+            if (nnest >= 2 && 1 <= nest[nnest - 2].n && nest[nnest - 2].n <= 3) {
                 output.push_back ({etag2, embegin, emend});
                 nest.pop_back ();
             }
