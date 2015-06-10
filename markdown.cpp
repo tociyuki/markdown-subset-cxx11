@@ -1318,6 +1318,39 @@ parse_fetch_reference_link (
 }
 
 static char_iterator
+parse_ruby (
+    char_iterator const bos,
+    char_iterator const pos,
+    char_iterator const posrbracket,
+    char_iterator const eos,
+    std::deque<token_type>& output, refdict_type const& dict,
+    std::deque<nest_type>& nest)
+{
+    char_iterator poscarret = scan_of (posrbracket, eos, 1, 1, '^');
+    if (posrbracket == poscarret)
+        return pos;
+    std::deque<token_type> inner;
+    std::deque<token_type> attribute;
+    nest.push_back ({output.size (), 4});
+    char_iterator p1 = scan_of (pos, eos, 1, 1, '[');
+    if (pos == p1)
+        return pos;
+    char_iterator p2
+        = parse_inline_loop (bos, p1, eos, inner, dict, nest);
+    while (nest.back ().n != 0 && nest.back ().n != 4) {
+        inner[nest.back ().pos].kind = TEXT;
+        nest.pop_back ();
+    }
+    char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
+    nest.pop_back ();
+    bool already = nest_exists (nest, 4);
+    char_iterator p4 = parse_ruby_paren (p3, eos, attribute);
+    if (! already && p3 < p4)
+        return parse_make_ruby (pos, p4, inner, attribute, output);
+    return pos;
+}
+
+static char_iterator
 parse_link (
     char_iterator const bos,
     char_iterator const pos,
@@ -1351,6 +1384,9 @@ parse_link (
     char_iterator p5 = parse_link_bracket (p3, eos, p1, p2, attribute);
     if (! already && parse_fetch_reference_link (dict, attribute))
         return parse_make_link (pos, p5, inner, attribute, output);
+    char_iterator p6 = parse_ruby (bos, pos, p3, eos, output, dict, nest);
+    if (pos < p6)
+        return p6;
     parse_text (pos, p1, output);           // '['
     parse_inline_loop (bos, p1, p2, output, dict, nest);
     return parse_text (p2, p5, output);    // ']'
