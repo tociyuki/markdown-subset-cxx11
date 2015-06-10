@@ -60,6 +60,7 @@ enum {
     IMGBEGIN, ALT, IMGEND,
     BREAK, SCODE, ECODE, EA,
     SEM, EEM, SSTRONG, ESTRONG,
+    SRUBY, SRT, ERT, ERUBY,
     /* block HTML markup */
     HRULE,
     SPRE, EPRE,
@@ -89,6 +90,7 @@ static wchar_t const *kindname[]{
     L"<img src=\"", L"\" alt=\"", L"\" />",
     L"<br />\n", L"<code>", L"</code>", L"</a>",
     L"<em>", L"</em>", L"<strong>", L"</strong>",
+    L"<ruby>", L"<rp>(</rp><rt>", L"</rt><rp>)</rp>", L"</ruby>",
     /* block HTML markup */
     L"<hr />\n",
     L"<pre><code>", L"</code></pre>\n",
@@ -151,7 +153,7 @@ void markdown (std::wstring const& input, std::wostream& output)
 static bool
 ismdescapable (int c)
 {
-    static std::wstring esc (L"\\`*_{}[]()<>#+-.!");
+    static std::wstring esc (L"\\`*_{}[]()<>#+-.!^");
     return esc.find (c) != std::wstring::npos;
 }
 
@@ -1212,6 +1214,24 @@ parse_link_bracket (
     return p2;
 }
 
+/* experimental: [text]^(annotation)
+ *  <ruby>text<rp>(</rp><rt>annotation</rt><rp>)</rp></ruby>
+ */
+static char_iterator
+parse_ruby_paren (
+    char_iterator const pos,
+    char_iterator const eos,
+    std::deque<token_type>& attribute)
+{
+    char_iterator p1 = scan_of (pos, eos, 1, 1, '^');
+    char_iterator p3 = scan_quoted (p1, eos, '(', ')', '\\', ismdany);
+    if (pos == p1 || p1 == p3)
+        return pos;
+    char_iterator p2 = rscan_of (p1, p3 - 1, ismdwhite);
+    attribute.push_back ({TEXT, p1 + 1, p2});
+    return p3;
+}
+
 static char_iterator
 parse_link_paren (
     char_iterator const pos,
@@ -1246,6 +1266,23 @@ parse_link_paren (
     if (p5 - p4 > 1 && p4[0] == p5[-1] && ('"' == p5[-1] || '\'' == p5[-1]))
         attribute.push_back ({TITLE, p4 + 1, p5 - 1});
     return p6;
+}
+
+static char_iterator
+parse_make_ruby (
+    char_iterator const cbegin,
+    char_iterator const cend,
+    std::deque<token_type>& inner,
+    std::deque<token_type>& attribute,
+    std::deque<token_type>& output)
+{
+    output.push_back ({SRUBY, cbegin, cbegin});
+    output.insert (output.end (), inner.begin (), inner.end ());
+    output.push_back ({SRT, cbegin, cbegin});
+    output.insert (output.end (), attribute.begin (), attribute.end ());
+    output.push_back ({ERT, cbegin, cbegin});
+    output.push_back ({ERUBY, cbegin, cbegin});
+    return cend;
 }
 
 static char_iterator
@@ -1305,6 +1342,9 @@ parse_link (
     bool already = nest_exists (nest, 0);
     if (p1 == p2 || p2 == p3)
         return parse_text (pos, p1, output);
+    char_iterator p4ruby = parse_ruby_paren (p3, eos, attribute);
+    if (p3 < p4ruby)
+        return parse_make_ruby (pos, p4ruby, inner, attribute, output);
     char_iterator p4 = parse_link_paren (p3, eos, attribute);
     if (! already && p3 < p4)
         return parse_make_link (pos, p4, inner, attribute, output);

@@ -24,3 +24,21 @@ C.UTF-8 locale on the platform.
 mkdown commands is a filter from stdin to stdout
 without command line options.
 
+EXPERIMENTAL
+============
+
+This provides you to markdown simplified `<ruby>` elements. For example:
+
+    support [FURIGANA]^(rubi) elements.
+
+Will produce:
+
+    <p>support <ruby>FURIGANA<rp>(</rp><rt>rubi</rt><rp>)</rp></ruby> elements.</p>
+
+Since this supports single `<rt>` element in `<ruby>` one,
+you must write explicit `<ruby>` elements for cascading `<rt>` cases.
+
+    not support <ruby>KAN<rt>kan</rt>JI<rt>ji</rt></ruby> elements.
+
+This `<ruby>` extension is in experimental.
+
