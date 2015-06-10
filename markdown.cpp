@@ -1060,9 +1060,9 @@ patch_emphasis_three (char_iterator embegin, char_iterator emend,
     if (! already) {
         if (! rightwhite) {
             nest.push_back ({output.size (), 3});
-            nest.push_back ({output.size (), 3});
-            output.push_back ({SSTRONG, embegin, emend});
-            output.push_back ({SEM, embegin, embegin});
+            nest.push_back ({output.size () + 1, 3});
+            output.push_back ({SSTRONG, embegin, embegin + 2});
+            output.push_back ({SEM, embegin, embegin + 1});
             return;
         }
     }
