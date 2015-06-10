@@ -1375,18 +1375,15 @@ parse_link (
     bool already = nest_exists (nest, 0);
     if (p1 == p2 || p2 == p3)
         return parse_text (pos, p1, output);
-    char_iterator p4ruby = parse_ruby_paren (p3, eos, attribute);
+    char_iterator p4ruby = parse_ruby (bos, pos, p3, eos, output, dict, nest);
     if (p3 < p4ruby)
-        return parse_make_ruby (pos, p4ruby, inner, attribute, output);
+        return p4ruby;
     char_iterator p4 = parse_link_paren (p3, eos, attribute);
     if (! already && p3 < p4)
         return parse_make_link (pos, p4, inner, attribute, output);
     char_iterator p5 = parse_link_bracket (p3, eos, p1, p2, attribute);
     if (! already && parse_fetch_reference_link (dict, attribute))
         return parse_make_link (pos, p5, inner, attribute, output);
-    char_iterator p6 = parse_ruby (bos, pos, p3, eos, output, dict, nest);
-    if (pos < p6)
-        return p6;
     parse_text (pos, p1, output);           // '['
     parse_inline_loop (bos, p1, p2, output, dict, nest);
     return parse_text (p2, p5, output);    // ']'
