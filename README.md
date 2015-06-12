@@ -7,7 +7,7 @@ it is not compliant with the reference implementation.
  [1]: http://daringfireball.net/projects/markdown/
 
 BUILD
-====
+-----
 
 Current Makefile requires LLVM clang++ compiler.
 Tested under the GNU libstdc++ 3 and LLVM libc++
@@ -25,7 +25,7 @@ mkdown commands is a filter from stdin to stdout
 without command line options.
 
 EXPERIMENTAL
-============
+-----
 
 This provides you to markdown simplified `<ruby>` elements. For example:
 

@@ -1318,6 +1318,25 @@ parse_fetch_reference_link (
 }
 
 static char_iterator
+parse_inline_bracket (
+    char_iterator const bos,
+    char_iterator const pos,
+    char_iterator const eos,
+    std::deque<token_type>& inner, refdict_type const& dict,
+    std::deque<nest_type>& nest, int kind)
+{
+    nest.push_back ({inner.size (), kind});
+    char_iterator p1 = parse_inline_loop (bos, pos, eos, inner, dict, nest);
+    while (nest.back ().n != kind) {
+        if (1 <= nest.back ().n && nest.back ().n <= 3)
+            inner[nest.back ().pos].kind = TEXT;
+        nest.pop_back ();
+    }
+    nest.pop_back ();
+    return p1;
+}
+
+static char_iterator
 parse_ruby (
     char_iterator const bos,
     char_iterator const pos,
@@ -1331,18 +1350,11 @@ parse_ruby (
         return pos;
     std::deque<token_type> inner;
     std::deque<token_type> attribute;
-    nest.push_back ({output.size (), 4});
     char_iterator p1 = scan_of (pos, eos, 1, 1, '[');
     if (pos == p1)
         return pos;
-    char_iterator p2
-        = parse_inline_loop (bos, p1, eos, inner, dict, nest);
-    while (nest.back ().n != 0 && nest.back ().n != 4) {
-        inner[nest.back ().pos].kind = TEXT;
-        nest.pop_back ();
-    }
+    char_iterator p2 = parse_inline_bracket (bos, p1, eos, inner, dict, nest, 4);
     char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
-    nest.pop_back ();
     bool already = nest_exists (nest, 4);
     char_iterator p4 = parse_ruby_paren (p3, eos, attribute);
     if (! already && p3 < p4)
@@ -1360,18 +1372,11 @@ parse_link (
 {
     std::deque<token_type> inner;
     std::deque<token_type> attribute;
-    nest.push_back ({output.size (), 0});
     char_iterator p1 = scan_of (pos, eos, 1, 1, '[');
     if (pos == p1)
         return pos;
-    char_iterator p2
-        = parse_inline_loop (bos, p1, eos, inner, dict, nest);
-    while (nest.back ().n != 0) {
-        inner[nest.back ().pos].kind = TEXT;
-        nest.pop_back ();
-    }
+    char_iterator p2 = parse_inline_bracket (bos, p1, eos, inner, dict, nest, 0);
     char_iterator p3 = scan_of (p2, eos, 1, 1, ']');
-    nest.pop_back ();
     bool already = nest_exists (nest, 0);
     if (p1 == p2 || p2 == p3)
         return parse_text (pos, p1, output);
@@ -1478,7 +1483,8 @@ parse_inline (std::wstring const& input, std::deque<token_type>& output,
             pos = parse_text (pos, pos + 1, output);
     }
     while (! nest.empty ()) {
-        output[nest.back ().pos].kind = TEXT;
+        if (1 <= nest.back ().n && nest.back ().n <= 3)
+            output[nest.back ().pos].kind = TEXT;
         nest.pop_back ();
     }
 }
